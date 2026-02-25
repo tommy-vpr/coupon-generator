@@ -477,11 +477,11 @@ export default function CouponGeneratorPage() {
                 </div>
                 <button
                   onClick={handleLogout}
-                  className="p-1.5 rounded-lg text-zinc-500 hover:text-zinc-300 hover:bg-surface-200 transition"
+                  className="p-1.5 rounded-lg text-rose-500 hover:text-rose-400 hover:bg-surface-200 transition"
                   title="Sign out"
                 >
                   <svg
-                    className="w-3.5 h-3.5"
+                    className="w-4 h-4"
                     viewBox="0 0 24 24"
                     fill="none"
                     stroke="currentColor"
