@@ -13,26 +13,28 @@ export async function POST(request: NextRequest) {
       ends_at,
       usage_limit,
       once_per_customer,
+      collection_id,
     } = body;
 
-    // Validate required fields
     if (!title || !value_type || value === undefined || !starts_at) {
       return NextResponse.json(
-        { success: false, error: "Missing required fields: title, value_type, value, starts_at" },
-        { status: 400 }
+        {
+          success: false,
+          error: "Missing required fields: title, value_type, value, starts_at",
+        },
+        { status: 400 },
       );
     }
 
-    // Shopify expects negative values for discounts
-    const shopifyValue =
-      value_type === "fixed_amount"
-        ? `-${Math.abs(Number(value))}`
-        : `-${Math.abs(Number(value))}`;
+    const shopifyValue = `-${Math.abs(Number(value))}`;
+    const isCollectionRestricted = Boolean(collection_id);
 
     const priceRule = {
       title,
       target_type: "line_item" as const,
-      target_selection: "all" as const,
+      target_selection: isCollectionRestricted
+        ? ("entitled" as const)
+        : ("all" as const),
       allocation_method: "across" as const,
       value_type,
       value: shopifyValue,
@@ -41,22 +43,25 @@ export async function POST(request: NextRequest) {
       ...(ends_at && { ends_at }),
       ...(usage_limit && { usage_limit: Number(usage_limit) }),
       ...(once_per_customer !== undefined && { once_per_customer }),
+      ...(isCollectionRestricted && {
+        entitled_collection_ids: [Number(collection_id)],
+      }),
     };
 
     const result = await createPriceRule(priceRule);
 
-    return NextResponse.json({
-      success: true,
-      data: result.price_rule,
-    });
+    return NextResponse.json({ success: true, data: result.price_rule });
   } catch (error) {
     console.error("Error creating price rule:", error);
     return NextResponse.json(
       {
         success: false,
-        error: error instanceof Error ? error.message : "Failed to create price rule",
+        error:
+          error instanceof Error
+            ? error.message
+            : "Failed to create price rule",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -64,19 +69,18 @@ export async function POST(request: NextRequest) {
 export async function GET() {
   try {
     const result = await getPriceRules();
-
-    return NextResponse.json({
-      success: true,
-      data: result.price_rules,
-    });
+    return NextResponse.json({ success: true, data: result.price_rules });
   } catch (error) {
     console.error("Error fetching price rules:", error);
     return NextResponse.json(
       {
         success: false,
-        error: error instanceof Error ? error.message : "Failed to fetch price rules",
+        error:
+          error instanceof Error
+            ? error.message
+            : "Failed to fetch price rules",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -89,21 +93,23 @@ export async function DELETE(request: NextRequest) {
     if (!id) {
       return NextResponse.json(
         { success: false, error: "Price rule ID is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     await deletePriceRule(Number(id));
-
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Error deleting price rule:", error);
     return NextResponse.json(
       {
         success: false,
-        error: error instanceof Error ? error.message : "Failed to delete price rule",
+        error:
+          error instanceof Error
+            ? error.message
+            : "Failed to delete price rule",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

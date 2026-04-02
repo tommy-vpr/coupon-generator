@@ -1,17 +1,24 @@
 export type DiscountType = "fixed_amount" | "percentage";
 
+export interface Collection {
+  id: number;
+  title: string;
+  handle: string;
+}
+
 export interface PriceRulePayload {
   title: string;
   target_type: "line_item" | "shipping_line";
   target_selection: "all" | "entitled";
   allocation_method: "across" | "each";
   value_type: DiscountType;
-  value: string; // negative for fixed_amount, negative percentage for percentage
+  value: string;
   customer_selection: "all" | "prerequisite";
   starts_at: string;
   ends_at?: string;
   usage_limit?: number;
   once_per_customer?: boolean;
+  entitled_collection_ids?: number[];
 }
 
 export interface PriceRule {
@@ -24,6 +31,7 @@ export interface PriceRule {
   usage_limit: number | null;
   once_per_customer: boolean;
   created_at: string;
+  entitled_collection_ids?: number[];
 }
 
 export interface DiscountCode {
@@ -46,6 +54,7 @@ export interface GeneratorFormData {
   endsAt: string;
   usageLimit: number | null;
   oncePerCustomer: boolean;
+  collectionId: string | null;
 }
 
 export interface GeneratedCode {

@@ -218,6 +218,11 @@ export default function CouponGeneratorPage() {
   const [endsAt, setEndsAt] = useState<string>("");
   const [usageLimit, setUsageLimit] = useState<string>("");
   const [oncePerCustomer, setOncePerCustomer] = useState<boolean>(true);
+  const [collectionId, setCollectionId] = useState<string>("");
+  const [collections, setCollections] = useState<
+    { id: number; title: string }[]
+  >([]);
+  const [isLoadingCollections, setIsLoadingCollections] = useState(false);
 
   // Generated codes state
   const [generatedCodes, setGeneratedCodes] = useState<GeneratedCode[]>([]);
@@ -263,18 +268,39 @@ export default function CouponGeneratorPage() {
     loadRecentRules();
   }, [loadRecentRules]);
 
+  // Load collections from Shopify
+  const loadCollections = useCallback(async () => {
+    setIsLoadingCollections(true);
+    try {
+      const res = await fetch("/api/collections");
+      const data = await res.json();
+      if (data.success) setCollections(data.data || []);
+    } catch {
+      // Silently fail
+    } finally {
+      setIsLoadingCollections(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadCollections();
+  }, [loadCollections]);
+
   // Brand switch handler — clears state and reloads for new store
   const handleBrandSwitch = useCallback(
     (brand: { id: string; name: string; domain: string }) => {
       setActiveBrandName(brand.name);
       setGeneratedCodes([]);
       setRecentRules([]);
+      setCollectionId("");
+      setCollections([]);
       addToast("info", `Switched to ${brand.name}`);
       setTimeout(() => {
         loadRecentRules();
+        loadCollections();
       }, 100);
     },
-    [loadRecentRules, addToast],
+    [loadRecentRules, loadCollections, addToast],
   );
 
   // ─── Generate Handler ─────────────────────────────────
@@ -309,6 +335,7 @@ export default function CouponGeneratorPage() {
             endsAt && { ends_at: new Date(endsAt).toISOString() }),
           ...(usageLimit && { usage_limit: Number(usageLimit) }),
           once_per_customer: oncePerCustomer,
+          ...(collectionId && { collection_id: Number(collectionId) }),
         }),
       });
 
@@ -458,7 +485,7 @@ export default function CouponGeneratorPage() {
               <h1 className="text-sm font-semibold text-zinc-100 tracking-tight">
                 Coupon Generator
               </h1>
-              <p className="text-[11px] text-zinc-500">Shopify Admin</p>
+              <p className="text-[11px] text-zinc-400">Shopify Admin</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -471,7 +498,7 @@ export default function CouponGeneratorPage() {
                       {currentUser.name?.charAt(0).toUpperCase() || "U"}
                     </span>
                   </div>
-                  <span className="text-[11px] font-medium text-zinc-400">
+                  <span className="text-[11px] font-medium text-zinc-300">
                     {currentUser.name}
                   </span>
                 </div>
@@ -518,7 +545,7 @@ export default function CouponGeneratorPage() {
                       className={`px-4 py-1.5 rounded-md text-xs font-medium transition-all ${
                         mode === m
                           ? "bg-surface-400 text-zinc-100 shadow-sm"
-                          : "text-zinc-500 hover:text-zinc-300"
+                          : "text-zinc-400 hover:text-zinc-300"
                       }`}
                     >
                       {m === "single" ? "Single Code" : "Batch Codes"}
@@ -530,7 +557,7 @@ export default function CouponGeneratorPage() {
               {/* Discount Type */}
               <div className="space-y-4">
                 <div>
-                  <label className="block text-xs font-medium text-zinc-400 mb-2">
+                  <label className="block text-xs font-medium text-zinc-300 mb-2">
                     Discount Type
                   </label>
                   <div className="grid grid-cols-2 gap-3">
@@ -563,7 +590,7 @@ export default function CouponGeneratorPage() {
                           className={`w-10 h-10 rounded-lg flex items-center justify-center text-lg font-bold ${
                             discountType === opt.value
                               ? "bg-green-500/10 text-green-400"
-                              : "bg-surface-300/50 text-zinc-500"
+                              : "bg-surface-300/50 text-zinc-400"
                           }`}
                         >
                           {opt.icon}
@@ -572,7 +599,7 @@ export default function CouponGeneratorPage() {
                           <div className="text-sm font-medium text-zinc-200">
                             {opt.label}
                           </div>
-                          <div className="text-[11px] text-zinc-500">
+                          <div className="text-[11px] text-zinc-400">
                             {opt.desc}
                           </div>
                         </div>
@@ -587,11 +614,11 @@ export default function CouponGeneratorPage() {
                 {/* Value & Title Row */}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-medium text-zinc-400 mb-2">
+                    <label className="block text-xs font-medium text-zinc-300 mb-2">
                       Discount Value
                     </label>
                     <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-zinc-500">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-zinc-400">
                         {discountType === "percentage" ? "%" : "$"}
                       </span>
                       <input
@@ -606,7 +633,7 @@ export default function CouponGeneratorPage() {
                     </div>
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-zinc-400 mb-2">
+                    <label className="block text-xs font-medium text-zinc-300 mb-2">
                       Rule Title
                     </label>
                     <input
@@ -621,12 +648,12 @@ export default function CouponGeneratorPage() {
 
                 {/* Code Settings */}
                 <div className="pt-2">
-                  <label className="block text-xs font-medium text-zinc-400 mb-3">
+                  <label className="block text-xs font-medium text-zinc-300 mb-3">
                     Code Format
                   </label>
                   <div className="grid grid-cols-3 gap-4">
                     <div>
-                      <label className="block text-[11px] text-zinc-500 mb-1.5">
+                      <label className="block text-[11px] text-zinc-400 mb-1.5">
                         Prefix
                       </label>
                       <input
@@ -645,7 +672,7 @@ export default function CouponGeneratorPage() {
                       />
                     </div>
                     <div>
-                      <label className="block text-[11px] text-zinc-500 mb-1.5">
+                      <label className="block text-[11px] text-zinc-400 mb-1.5">
                         Random Length
                       </label>
                       <input
@@ -663,7 +690,7 @@ export default function CouponGeneratorPage() {
                     </div>
                     {mode === "batch" && (
                       <div>
-                        <label className="block text-[11px] text-zinc-500 mb-1.5">
+                        <label className="block text-[11px] text-zinc-400 mb-1.5">
                           # of Codes
                         </label>
                         <input
@@ -687,7 +714,7 @@ export default function CouponGeneratorPage() {
 
                   {/* Preview */}
                   <div className="mt-3 flex items-center gap-2">
-                    <span className="text-[11px] text-zinc-500">Preview:</span>
+                    <span className="text-[11px] text-zinc-400">Preview:</span>
                     <code className="text-xs font-mono text-green-400 bg-green-500/5 border border-green-500/10 px-2 py-0.5 rounded">
                       {previewCode}
                     </code>
@@ -695,7 +722,7 @@ export default function CouponGeneratorPage() {
                       onClick={() =>
                         setPreviewCode(generateCode(prefix, codeLength))
                       }
-                      className="text-[11px] text-zinc-500 hover:text-zinc-300 transition"
+                      className="text-[11px] text-zinc-400 hover:text-zinc-300 transition"
                     >
                       ↻ refresh
                     </button>
@@ -704,7 +731,7 @@ export default function CouponGeneratorPage() {
 
                 {/* Schedule & Limits */}
                 <div className="pt-2">
-                  <label className="block text-xs font-medium text-zinc-400 mb-3">
+                  <label className="block text-xs font-medium text-zinc-300 mb-3">
                     Activation
                   </label>
 
@@ -765,7 +792,7 @@ export default function CouponGeneratorPage() {
                           className={`flex-shrink-0 ${
                             scheduleMode === opt.value
                               ? "text-green-400"
-                              : "text-zinc-500"
+                              : "text-zinc-400"
                           }`}
                         >
                           {opt.icon}
@@ -774,7 +801,7 @@ export default function CouponGeneratorPage() {
                           <div className="text-xs font-medium text-zinc-200">
                             {opt.label}
                           </div>
-                          <div className="text-[10px] text-zinc-500">
+                          <div className="text-[10px] text-zinc-400">
                             {opt.desc}
                           </div>
                         </div>
@@ -789,7 +816,7 @@ export default function CouponGeneratorPage() {
                   {scheduleMode === "scheduled" && (
                     <div className="grid grid-cols-2 gap-4 mb-3">
                       <div>
-                        <label className="block text-[11px] text-zinc-500 mb-1.5">
+                        <label className="block text-[11px] text-zinc-400 mb-1.5">
                           Start Date
                         </label>
                         <input
@@ -800,7 +827,7 @@ export default function CouponGeneratorPage() {
                         />
                       </div>
                       <div>
-                        <label className="block text-[11px] text-zinc-500 mb-1.5">
+                        <label className="block text-[11px] text-zinc-400 mb-1.5">
                           End Date{" "}
                           <span className="text-zinc-600">(optional)</span>
                         </label>
@@ -816,7 +843,7 @@ export default function CouponGeneratorPage() {
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-[11px] text-zinc-500 mb-1.5">
+                      <label className="block text-[11px] text-zinc-400 mb-1.5">
                         Total Usage Limit{" "}
                         <span className="text-zinc-600">(optional)</span>
                       </label>
@@ -843,12 +870,77 @@ export default function CouponGeneratorPage() {
                           <div className="w-9 h-5 bg-surface-400 rounded-full peer-checked:bg-green-500/60 transition-colors" />
                           <div className="absolute top-0.5 left-0.5 w-4 h-4 bg-zinc-200 rounded-full peer-checked:translate-x-4 transition-transform shadow-sm" />
                         </div>
-                        <span className="text-xs text-zinc-400 group-hover:text-zinc-300 transition">
+                        <span className="text-xs text-zinc-300 group-hover:text-zinc-300 transition">
                           Once per customer
                         </span>
                       </label>
                     </div>
                   </div>
+                </div>
+
+                {/* Collection Restriction */}
+                <div className="space-y-2">
+                  <label className="block text-xs font-medium text-zinc-300 uppercase tracking-wider">
+                    Collection Restriction{" "}
+                    <span
+                      className="normal-case font-normal bg-rose-700/20 p-1 px-2 rounded-md 
+                    text-rose-500"
+                    >
+                      — select a collection or leave as all products
+                    </span>
+                  </label>
+                  <div className="relative">
+                    <select
+                      value={collectionId}
+                      onChange={(e) => setCollectionId(e.target.value)}
+                      disabled={isLoadingCollections}
+                      className="w-full appearance-none bg-surface-200 border border-surface-300/50 rounded-lg px-3 py-2 pr-8 text-sm text-zinc-100 focus:outline-none focus:border-green-500/40 focus:ring-1 focus:ring-green-500/20 transition disabled:opacity-50"
+                    >
+                      <option value="">All products</option>
+                      {collections.map((c) => (
+                        <option key={c.id} value={String(c.id)}>
+                          {c.title}
+                        </option>
+                      ))}
+                    </select>
+                    <div className="pointer-events-none absolute inset-y-0 right-2.5 flex items-center">
+                      {isLoadingCollections ? (
+                        <SpinnerIcon className="w-3.5 h-3.5 text-zinc-400" />
+                      ) : (
+                        <svg
+                          className="w-3.5 h-3.5 text-zinc-400"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                        >
+                          <path
+                            d="M6 9l6 6 6-6"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                      )}
+                    </div>
+                  </div>
+                  {collectionId && (
+                    <p className="text-xs text-amber-400/80 flex items-center gap-1.5">
+                      <svg
+                        className="w-3.5 h-3.5 flex-shrink-0"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                      >
+                        <path
+                          d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                      Discount will only apply to items in this collection
+                    </p>
+                  )}
                 </div>
 
                 {/* Generate Button */}
@@ -876,7 +968,7 @@ export default function CouponGeneratorPage() {
                   <button
                     onClick={resetForm}
                     disabled={isGenerating}
-                    className="px-4 py-3 rounded-lg text-sm font-medium text-zinc-400 hover:text-zinc-200 bg-surface-200 hover:bg-surface-300 border border-surface-300/50 transition disabled:opacity-50"
+                    className="px-4 py-3 rounded-lg text-sm font-medium text-zinc-300 hover:text-zinc-200 bg-surface-200 hover:bg-surface-300 border border-surface-300/50 transition disabled:opacity-50"
                     title="Reset form"
                   >
                     <svg
@@ -903,21 +995,21 @@ export default function CouponGeneratorPage() {
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-base font-semibold text-zinc-100">
                     Generated Codes
-                    <span className="ml-2 text-xs font-normal text-zinc-500">
+                    <span className="ml-2 text-xs font-normal text-zinc-400">
                       ({generatedCodes.length})
                     </span>
                   </h2>
                   <div className="flex items-center gap-2">
                     <button
                       onClick={copyAllCodes}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-zinc-400 hover:text-zinc-200 bg-surface-200 hover:bg-surface-300 border border-surface-300/50 transition"
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-zinc-300 hover:text-zinc-200 bg-surface-200 hover:bg-surface-300 border border-surface-300/50 transition"
                     >
                       <CopyIcon className="w-3.5 h-3.5" />
                       Copy All
                     </button>
                     <button
                       onClick={exportCSV}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-zinc-400 hover:text-zinc-200 bg-surface-200 hover:bg-surface-300 border border-surface-300/50 transition"
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-zinc-300 hover:text-zinc-200 bg-surface-200 hover:bg-surface-300 border border-surface-300/50 transition"
                     >
                       <DownloadIcon className="w-3.5 h-3.5" />
                       CSV
@@ -978,7 +1070,7 @@ export default function CouponGeneratorPage() {
                         </span>
                         <button
                           onClick={() => copyToClipboard(item.code)}
-                          className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-surface-300 text-zinc-500 hover:text-zinc-300 transition-all"
+                          className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-surface-300 text-zinc-400 hover:text-zinc-300 transition-all"
                         >
                           <CopyIcon className="w-3.5 h-3.5" />
                         </button>
@@ -994,7 +1086,7 @@ export default function CouponGeneratorPage() {
           <div className="space-y-6">
             {/* Quick Stats */}
             <div className="bg-surface-100 rounded-xl border border-surface-300/50 p-6">
-              <h3 className="text-xs font-medium text-zinc-500 uppercase tracking-wider mb-4">
+              <h3 className="text-xs font-medium text-zinc-400 uppercase tracking-wider mb-4">
                 Session Summary
               </h3>
               <div className="grid grid-cols-2 gap-3">
@@ -1005,7 +1097,7 @@ export default function CouponGeneratorPage() {
                         .length
                     }
                   </div>
-                  <div className="text-[11px] text-zinc-500 mt-1">
+                  <div className="text-[11px] text-zinc-400 mt-1">
                     Codes Created
                   </div>
                 </div>
@@ -1013,7 +1105,7 @@ export default function CouponGeneratorPage() {
                   <div className="text-2xl font-bold text-zinc-100 font-mono">
                     {generatedCodes.filter((c) => c.status === "failed").length}
                   </div>
-                  <div className="text-[11px] text-zinc-500 mt-1">Failed</div>
+                  <div className="text-[11px] text-zinc-400 mt-1">Failed</div>
                 </div>
               </div>
             </div>
@@ -1021,12 +1113,12 @@ export default function CouponGeneratorPage() {
             {/* Recent Price Rules */}
             <div className="bg-surface-100 rounded-xl border border-surface-300/50 p-6">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-xs font-medium text-zinc-500 uppercase tracking-wider">
+                <h3 className="text-xs font-medium text-zinc-400 uppercase tracking-wider">
                   Recent Price Rules
                 </h3>
                 <button
                   onClick={loadRecentRules}
-                  className="text-[11px] text-zinc-500 hover:text-zinc-300 transition"
+                  className="text-[11px] text-zinc-400 hover:text-zinc-300 transition"
                 >
                   ↻ refresh
                 </button>
@@ -1035,9 +1127,9 @@ export default function CouponGeneratorPage() {
               {isLoadingRules ? (
                 <div className="flex items-center justify-center py-8">
                   <div className="flex gap-1">
-                    <div className="w-1.5 h-1.5 rounded-full bg-zinc-500 pulse-dot" />
-                    <div className="w-1.5 h-1.5 rounded-full bg-zinc-500 pulse-dot" />
-                    <div className="w-1.5 h-1.5 rounded-full bg-zinc-500 pulse-dot" />
+                    <div className="w-1.5 h-1.5 rounded-full bg-zinc-400 pulse-dot" />
+                    <div className="w-1.5 h-1.5 rounded-full bg-zinc-400 pulse-dot" />
+                    <div className="w-1.5 h-1.5 rounded-full bg-zinc-400 pulse-dot" />
                   </div>
                 </div>
               ) : recentRules.length === 0 ? (
@@ -1085,7 +1177,7 @@ export default function CouponGeneratorPage() {
 
             {/* Info Card */}
             <div className="bg-surface-100 rounded-xl border border-surface-300/50 p-6">
-              <h3 className="text-xs font-medium text-zinc-500 uppercase tracking-wider mb-3">
+              <h3 className="text-xs font-medium text-zinc-400 uppercase tracking-wider mb-3">
                 How It Works
               </h3>
               <div className="space-y-3">
@@ -1108,10 +1200,10 @@ export default function CouponGeneratorPage() {
                   },
                 ].map((item) => (
                   <div key={item.step} className="flex items-start gap-3">
-                    <span className="flex-shrink-0 w-5 h-5 rounded-full bg-surface-300 flex items-center justify-center text-[10px] font-bold text-zinc-400">
+                    <span className="flex-shrink-0 w-5 h-5 rounded-full bg-surface-300 flex items-center justify-center text-[10px] font-bold text-zinc-300">
                       {item.step}
                     </span>
-                    <span className="text-xs text-zinc-400 leading-relaxed">
+                    <span className="text-xs text-zinc-300 leading-relaxed">
                       {item.text}
                     </span>
                   </div>

@@ -13,9 +13,7 @@ async function shopifyRequest<T>({
   body,
   brand,
 }: ShopifyRequestOptions): Promise<T> {
-  // Resolve brand — use passed-in or fetch active
   const config = brand ?? (await getActiveBrand());
-
   const url = `${config.adminApiUrl}${endpoint}`;
 
   const headers: Record<string, string> = {
@@ -40,7 +38,7 @@ async function shopifyRequest<T>({
     throw new Error(
       typeof errorMessage === "string"
         ? errorMessage
-        : JSON.stringify(errorMessage)
+        : JSON.stringify(errorMessage),
     );
   }
 
@@ -65,6 +63,7 @@ export async function createPriceRule(priceRule: {
   ends_at?: string;
   usage_limit?: number;
   once_per_customer?: boolean;
+  entitled_collection_ids?: number[];
 }) {
   return shopifyRequest<{ price_rule: Record<string, unknown> }>({
     method: "POST",
@@ -87,31 +86,47 @@ export async function deletePriceRule(priceRuleId: number) {
   });
 }
 
+// ─── Collections ──────────────────────────────────────────
+
+export async function getCollections() {
+  const [custom, smart] = await Promise.all([
+    shopifyRequest<{
+      custom_collections: Array<{ id: number; title: string; handle: string }>;
+    }>({
+      method: "GET",
+      endpoint: "/custom_collections.json?limit=250&fields=id,title,handle",
+    }),
+    shopifyRequest<{
+      smart_collections: Array<{ id: number; title: string; handle: string }>;
+    }>({
+      method: "GET",
+      endpoint: "/smart_collections.json?limit=250&fields=id,title,handle",
+    }),
+  ]);
+
+  return [...custom.custom_collections, ...smart.smart_collections].sort(
+    (a, b) => a.title.localeCompare(b.title),
+  );
+}
+
 // ─── Discount Codes ───────────────────────────────────────
 
-export async function createDiscountCode(
-  priceRuleId: number,
-  code: string
-) {
+export async function createDiscountCode(priceRuleId: number, code: string) {
   return shopifyRequest<{ discount_code: Record<string, unknown> }>({
     method: "POST",
     endpoint: `/price_rules/${priceRuleId}/discount_codes.json`,
-    body: {
-      discount_code: { code },
-    },
+    body: { discount_code: { code } },
   });
 }
 
 export async function createBatchDiscountCodes(
   priceRuleId: number,
-  codes: string[]
+  codes: string[],
 ) {
   return shopifyRequest<{ discount_codes: Record<string, unknown>[] }>({
     method: "POST",
     endpoint: `/price_rules/${priceRuleId}/batch.json`,
-    body: {
-      discount_codes: codes.map((code) => ({ code })),
-    },
+    body: { discount_codes: codes.map((code) => ({ code })) },
   });
 }
 
@@ -133,7 +148,7 @@ export async function getBatchJob(priceRuleId: number, batchId: number) {
 
 export async function shopifyGraphQL<T>(
   query: string,
-  variables?: Record<string, unknown>
+  variables?: Record<string, unknown>,
 ): Promise<T> {
   const config = await getActiveBrand();
 
@@ -158,7 +173,7 @@ export async function shopifyGraphQL<T>(
 
   if (data.errors) {
     throw new Error(
-      data.errors.map((e: { message: string }) => e.message).join(", ")
+      data.errors.map((e: { message: string }) => e.message).join(", "),
     );
   }
 
