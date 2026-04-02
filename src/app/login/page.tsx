@@ -146,7 +146,7 @@ export default function LoginPage() {
           </button>
         </form>
 
-        <p className="text-center text-[10px] text-zinc-600 mt-6">
+        <p className="text-center text-[11px] text-zinc-500 mt-6">
           Internal use only. Access is restricted.
         </p>
       </div>
