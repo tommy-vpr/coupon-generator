@@ -28,10 +28,17 @@ export function getAllBrands(): BrandConfig[] {
     const name = process.env[`BRAND_${i}_NAME`];
     const domain = process.env[`BRAND_${i}_SHOPIFY_DOMAIN`];
     const adminApiUrl = process.env[`BRAND_${i}_SHOPIFY_ADMIN_API_URL`];
-    const accessToken = process.env[`BRAND_${i}_SHOPIFY_ACCESS_TOKEN`];
+    const accessToken = process.env[`BRAND_${i}_SHOPIFY_ACCESS_TOKEN`] || "";
+    const apiKey = process.env[`BRAND_${i}_SHOPIFY_API_KEY`] || "";
+    const apiSecret = process.env[`BRAND_${i}_SHOPIFY_API_SECRET`] || "";
 
-    // Skip brands missing critical values
-    if (!name || !adminApiUrl || !accessToken) continue;
+    // A brand needs name + admin URL, and at least one auth method:
+    //   - Legacy static access token (shpat_...), OR
+    //   - Client ID + Client Secret for client_credentials grant (Dev Dashboard apps)
+    if (!name || !adminApiUrl) continue;
+    const hasStaticToken = !!accessToken;
+    const hasClientCreds = !!(apiKey && apiSecret);
+    if (!hasStaticToken && !hasClientCreds) continue;
 
     brands.push({
       id: `brand_${i}`,
@@ -39,8 +46,8 @@ export function getAllBrands(): BrandConfig[] {
       domain: domain || "",
       adminApiUrl,
       accessToken,
-      apiKey: process.env[`BRAND_${i}_SHOPIFY_API_KEY`] || "",
-      apiSecret: process.env[`BRAND_${i}_SHOPIFY_API_SECRET`] || "",
+      apiKey,
+      apiSecret,
       graphqlUrl: process.env[`BRAND_${i}_SHOPIFY_ADMIN_API_URL_GRAPHQL`] || "",
       allowedOrigin: process.env[`BRAND_${i}_ALLOWED_ORIGIN`] || "",
       logo: process.env[`BRAND_${i}_LOGO`] || "",
@@ -60,7 +67,7 @@ export async function getActiveBrand(): Promise<BrandConfig> {
 
   if (brands.length === 0) {
     throw new Error(
-      "No brands configured. Set BRAND_COUNT and BRAND_N_* env vars."
+      "No brands configured. Set BRAND_COUNT and BRAND_N_* env vars.",
     );
   }
 
@@ -88,14 +95,16 @@ export interface BrandInfo {
 }
 
 export function getBrandList(): BrandInfo[] {
-  return getAllBrands().map(({ id, name, domain, allowedOrigin, logo, color }) => ({
-    id,
-    name,
-    domain,
-    allowedOrigin,
-    logo,
-    color,
-  }));
+  return getAllBrands().map(
+    ({ id, name, domain, allowedOrigin, logo, color }) => ({
+      id,
+      name,
+      domain,
+      allowedOrigin,
+      logo,
+      color,
+    }),
+  );
 }
 
 export { COOKIE_NAME };

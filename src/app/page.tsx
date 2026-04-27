@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { generateCode, generateBatchCodes, formatDate } from "@/lib/utils";
 import BrandSwitcher from "@/components/BrandSwitcher";
+import UserMenu from "@/components/UserMenu";
 
 // ─── Types ────────────────────────────────────────────────
 
@@ -476,52 +477,27 @@ export default function CouponGeneratorPage() {
 
       {/* Header */}
       <header className="border-b border-surface-300/50 bg-surface-50/80 backdrop-blur-sm sticky top-0 z-40">
-        <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-green-500/10 flex items-center justify-center">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-14 sm:h-16 flex items-center justify-between gap-2">
+          {/* Brand / Title */}
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-8 h-8 rounded-lg bg-green-500/10 flex items-center justify-center flex-shrink-0">
               <TagIcon className="w-4 h-4 text-green-400" />
             </div>
-            <div>
-              <h1 className="text-sm font-semibold text-zinc-100 tracking-tight">
+            <div className="min-w-0">
+              <h1 className="text-sm font-semibold text-zinc-100 tracking-tight truncate">
                 Coupon Generator
               </h1>
-              <p className="text-[11px] text-zinc-400">Shopify Admin</p>
+              <p className="text-[11px] text-zinc-400 hidden sm:block">
+                Shopify Admin
+              </p>
             </div>
           </div>
+
+          {/* Right: brand + user */}
           <div className="flex items-center gap-2">
             <BrandSwitcher onSwitch={handleBrandSwitch} />
             {currentUser && (
-              <div className="flex items-center gap-2">
-                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-surface-200 border border-surface-300/50">
-                  <div className="w-4 h-4 rounded-full bg-green-500/20 flex items-center justify-center">
-                    <span className="text-[8px] font-bold text-green-400">
-                      {currentUser.name?.charAt(0).toUpperCase() || "U"}
-                    </span>
-                  </div>
-                  <span className="text-[11px] font-medium text-zinc-300">
-                    {currentUser.name}
-                  </span>
-                </div>
-                <button
-                  onClick={handleLogout}
-                  className="p-1.5 rounded-lg text-rose-500 hover:text-rose-400 hover:bg-surface-200 transition"
-                  title="Sign out"
-                >
-                  <svg
-                    className="w-4 h-4"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                  >
-                    <path
-                      d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                </button>
-              </div>
+              <UserMenu user={currentUser} onLogout={handleLogout} />
             )}
           </div>
         </div>

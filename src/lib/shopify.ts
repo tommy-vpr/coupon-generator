@@ -1,4 +1,5 @@
 import { getActiveBrand, type BrandConfig } from "./brands";
+import { getAccessToken } from "./shopify-token";
 
 interface ShopifyRequestOptions {
   method: "GET" | "POST" | "PUT" | "DELETE";
@@ -15,10 +16,11 @@ async function shopifyRequest<T>({
 }: ShopifyRequestOptions): Promise<T> {
   const config = brand ?? (await getActiveBrand());
   const url = `${config.adminApiUrl}${endpoint}`;
+  const accessToken = await getAccessToken(config);
 
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
-    "X-Shopify-Access-Token": config.accessToken,
+    "X-Shopify-Access-Token": accessToken,
   };
 
   const options: RequestInit = {
@@ -156,11 +158,13 @@ export async function shopifyGraphQL<T>(
     throw new Error("GraphQL URL is not configured for this brand");
   }
 
+  const accessToken = await getAccessToken(config);
+
   const response = await fetch(config.graphqlUrl, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "X-Shopify-Access-Token": config.accessToken,
+      "X-Shopify-Access-Token": accessToken,
     },
     body: JSON.stringify({ query, variables }),
   });
